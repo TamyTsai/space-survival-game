@@ -1,4 +1,5 @@
-import pygame
+import pygame # 引入pygame 以使用其函式
+import random # 引入random 以使用其函式 讓石頭隨機出現
 
 # 慣例上會把設定好就不會在遊戲中變動的值的變數名稱 以大寫命名
 FPS = 60 # 一秒鐘更新60次畫面
@@ -7,6 +8,7 @@ HEIGHT = 600 # 視窗高度
 
 WHITE = (255,255,255) # 視窗背景顏色
 GREEN = (0,255,0) # 綠色
+RED = (255,0,0) # 紅色
 
 # 遊戲初始化 及 創建視窗
 pygame.init() #pygame函式，將遊戲初始化
@@ -23,13 +25,14 @@ clock = pygame.time.Clock() # 創建物件，此物件可對時間做管理與�
 
 
 # Sprite:pygame中的類別，可以創建視窗中的畫面
-class Player(pygame.sprite.Sprite): # 表示創建Player物件類別 self物件 #Player物件 繼承 Sripte這個類別(pygame.sprite.Sprite為Sprite類別的位置)
+# 玩家操縱的飛船 Sprite類別
+class Player(pygame.sprite.Sprite): # 表示創建Player物件類別(玩家操縱的飛船) self物件 #Player物件 繼承 內建的Sripte這個類別(pygame.sprite.Sprite為Sprite類別的位置)
     def __init__(self): #_init_表示初始函式 self表示物件本身
         pygame.sprite.Sprite.__init__(self) # 先CALL內建的Sprite的初始函式(Sprite初始函式的固定寫法)
         # 此初始函式有兩個屬性:image(顯示圖片)及rect(定位圖片)
         self.image = pygame.Surface((50,40)) #物件有一個屬性叫image，而這個屬性被傳入pygame.Surface((50,40))這個值 #pygame.Surface((50,40))為寬度50高度40的平面
         self.image.fill(GREEN)
-        self.rect = self.image.get_rect() # 將本類別image屬性，用get_rect() 框起來(框起來後可以設定一些屬性(中間、上下左右、右上右下左上(xy座標)左下...)，設定image要在框框中的甚麼位置)指定給 屬性rect
+        self.rect = self.image.get_rect() # 將本類別image屬性，用get_rect() 框起來(框起來後可以設定一些屬性(中間、上下左右、右上右下左上(xy座標)左下...)，設定image要在框框中的甚麼位置)後，指定給 屬性rect
         # 讓image的左上角 對齊 框框座標(200,200)的位置(框框座標體系原點在左上角):
         # self.rect.x = 200
         # self.rect.y = 200
@@ -61,9 +64,42 @@ class Player(pygame.sprite.Sprite): # 表示創建Player物件類別 self物件 
         # if self.rect.left > WIDTH: # 判斷image的左邊座標是否已經大於畫面寬度
         #     self.rect.right = 0 # 將image的右邊座標設為0
 
+# 石頭 Sprite類別
+class Rock(pygame.sprite.Sprite):
+    def __init__(self):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = pygame.Surface((30,40))
+        self.image.fill(RED)
+        self.rect = self.image.get_rect()
+        # 讓image(石頭)於在左右方向隨機出現:
+        self.rect.x = random.randrange(0, WIDTH - self.rect.width) # 使用random中的randrage函式，函式中的數字表示數字隨機產生的範圍 # 最左邊:石頭的左邊界靠著X軸座標0的位置；最右邊:石頭的左邊界 靠著畫面寬度-石頭本身寬度 的位置
+        # 讓image(石頭)於視窗上方外上下隨機出現:
+        self.rect.y = random.randrange(-100, -40) # -100與-40為視窗上方外
+        # 讓image(石頭)落下速度隨機
+        self.speedy = random.randrange(2, 10)
+        # 讓image(石頭)左右移動速度隨機
+        self.speedx = random.randrange(-3, 3) # 負數表示往左跑(X座標減少)
+
+    def update(self):
+        self.rect.y += self.speedy # 把原先的y座標值+speedy後的值 指定給 y座標值
+        self.rect.x += self.speedx
+        # 如果image(石頭)掉到畫面外(下、左、右)，就重新生成
+        if self.rect.top > HEIGHT or self.rect.left > WIDTH or self.rect.right < 0: #  self.rect.top > HEIGHT:image(石頭)的頂部邊界座標 大於 視窗高度
+            # 讓image(石頭)於在左右方向隨機出現:
+            self.rect.x = random.randrange(0, WIDTH - self.rect.width) # 使用random中的randrage函式，函式中的數字表示數字隨機產生的範圍 # 最左邊:石頭的左邊界靠著X軸座標0的位置；最右邊:石頭的左邊界 靠著畫面寬度-石頭本身寬度 的位置
+            # 讓image(石頭)於視窗上方外上下隨機出現:
+            self.rect.y = random.randrange(-100, -40) # -100與-40為視窗上方外
+            # 讓image(石頭)落下速度隨機
+            self.speedy = random.randrange(2, 10)
+            # 讓image(石頭)左右移動速度隨機
+            self.speedx = random.randrange(-3, 3) # 負數表示往左跑(X座標減少)
+
 all_sprites = pygame.sprite.Group() # 將 變數all_sprites 指定為 一個sprite群組，群組中可放很多 sprite物件
-player = Player() # 創建一個player物件(Sprite物件)(使用Player類別(Sprite類別)新建)
+player = Player() # 創建一個player物件(玩家飛船)(Sprite物件)(使用Player類別(Sprite類別)新建)
 all_sprites.add(player) # player物件(Sprite物件) 加入 sprite群組
+for i in range(8): # 執行以下程式碼8次(創建石頭物件 加入sprite群組)
+    r = Rock()
+    all_sprites.add(r)
 
 
 # 遊戲迴圈
