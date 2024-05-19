@@ -29,19 +29,37 @@ class Player(pygame.sprite.Sprite): # 表示創建Player物件類別 self物件 
         # 此初始函式有兩個屬性:image(顯示圖片)及rect(定位圖片)
         self.image = pygame.Surface((50,40)) #物件有一個屬性叫image，而這個屬性被傳入pygame.Surface((50,40))這個值 #pygame.Surface((50,40))為寬度50高度40的平面
         self.image.fill(GREEN)
-        self.rect = self.image.get_rect() # 將本類別image屬性，用get_rect() 框起來(框起來後可以設定一些屬性(中間、上下左右、右上右下左上(xy座標)左下...)，設定image要在框框中的甚麼位置)
+        self.rect = self.image.get_rect() # 將本類別image屬性，用get_rect() 框起來(框起來後可以設定一些屬性(中間、上下左右、右上右下左上(xy座標)左下...)，設定image要在框框中的甚麼位置)指定給 屬性rect
         # 讓image的左上角 對齊 框框座標(200,200)的位置(框框座標體系原點在左上角):
         # self.rect.x = 200
         # self.rect.y = 200
+        # 讓image左右置中:
+        self.rect.centerx = WIDTH/2
+        # 讓image置底:
+        self.rect.bottom = HEIGHT-10 # image底部邊界座標 等於視窗高度-10(等同底部留10單位空間)
         # 讓image置中:
-        self.rect.center = (WIDTH/2, HEIGHT/2)
+        # self.rect.center = (WIDTH/2, HEIGHT/2)
+        self.speedx = 8 # 屬性speedx x軸的移動速度
 
     def update(self):
-        # 讓Sprite物件往右動2單位
-        self.rect.x += 2
-        # 
-        if self.rect.left > WIDTH: # 判斷image的左邊座標是否已經大於畫面寬度
-            self.rect.right = 0 # 將image的右邊座標設為0
+        # 方向控制
+        key_pressed = pygame.key.get_pressed() # pygame.key.get_pressed() 會回傳一整串布林值(代表鍵盤上每個按鍵是否被按下去的狀態)，將此一整串布林值 指定給 變數 key_pressed
+        if key_pressed[pygame.K_d]: # 判斷d鍵是否被按下
+            self.rect.x += self.speedx # 按下的話 image就往右移speedx單位 #把原先的x座標值+speedx後的值 指定給 x座標值 #這個類別本身的屬性 要加self.
+        if key_pressed[pygame.K_a]:
+            self.rect.x -= self.speedx
+
+        # 讓image不要超出左右邊界
+        if self.rect.right > WIDTH:
+            self.rect.right = WIDTH
+        if self.rect.left < 0:
+            self.rect.left = 0
+
+        # 讓image往右動2單位
+        # self.rect.x += 2
+        # # 讓image往右移動超出視窗時，再從左邊重新出現
+        # if self.rect.left > WIDTH: # 判斷image的左邊座標是否已經大於畫面寬度
+        #     self.rect.right = 0 # 將image的右邊座標設為0
 
 all_sprites = pygame.sprite.Group() # 將 變數all_sprites 指定為 一個sprite群組，群組中可放很多 sprite物件
 player = Player() # 創建一個player物件(Sprite物件)(使用Player類別(Sprite類別)新建)
