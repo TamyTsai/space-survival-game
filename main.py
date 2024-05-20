@@ -1,5 +1,6 @@
 import pygame # 引入pygame 以使用其函式
 import random # 引入random 以使用其函式 讓石頭隨機出現
+import os # 為了統一不同電腦、作業系統的路徑寫法 而引入
 
 # 慣例上會把設定好就不會在遊戲中變動的值的變數名稱 以大寫命名
 FPS = 60 # 一秒鐘更新60次畫面
@@ -25,16 +26,28 @@ pygame.display.set_caption("第一個遊戲") # 視窗標題
 clock = pygame.time.Clock() # 創建物件，此物件可對時間做管理與操縱
 # 每個人電腦效能不同，故遊戲迴圈結束後要等待下一次迴圈的時間不同，故要做時間管理
 
+# 載入圖片(記得要寫在初始化後面，初始化後才能載入圖片，要不然會出錯)
+background_img = pygame.image.load(os.path.join("img","background.png")).convert()
+# load(圖片路徑) 
+# 路徑寫法以os函數表示，os.path代表目前python檔案所在位置(太空生存戰 資料夾)  
+# .join("圖片所在資料夾名稱(太空生存戰 資料夾底下的資料夾)","圖片檔案名")
+# .convert()將圖片轉換成pygame較容易讀取的格式，畫到畫面上的速度會比較快
+player_img = pygame.image.load(os.path.join("img","player.png")).convert()
+rock_img = pygame.image.load(os.path.join("img","rock.png")).convert()
+bullet_img = pygame.image.load(os.path.join("img","bullet.png")).convert()
 
-# Sprite:pygame中的類別，可以創建視窗中的畫面
+
+# Sprite:pygame中的類別，可以創建視窗中的畫面物件
 # 玩家操縱的飛船(Sprite類別)
 class Player(pygame.sprite.Sprite): # 表示創建Player物件類別(玩家操縱的飛船) self物件 #Player物件 繼承 內建的Sripte這個類別(pygame.sprite.Sprite為Sprite類別的位置)
     # 初始函式
     def __init__(self): #_init_表示初始函式 self表示物件本身
         pygame.sprite.Sprite.__init__(self) # 先CALL內建的Sprite的初始函式(Sprite初始函式的固定寫法)
         # 此初始函式有兩個屬性:image(顯示圖片)及rect(定位圖片)
-        self.image = pygame.Surface((50,40)) #物件有一個屬性叫image，而這個屬性被傳入pygame.Surface((50,40))這個值 #pygame.Surface((50,40))為寬度50高度40的平面
-        self.image.fill(GREEN)
+        self.image = pygame.transform.scale(player_img, (50,38)) # pygame.transform.scale(要重新定義大小的圖片, (寬,高))
+        self.image.set_colorkey(BLACK) # 把圖片的甚麼顏色(黑色)變成透明
+        # self.image = pygame.Surface((50,40)) #物件有一個屬性叫image，而這個屬性被傳入pygame.Surface((50,40))這個值 #pygame.Surface((50,40))為寬度50高度40的平面
+        # self.image.fill(GREEN)
         self.rect = self.image.get_rect() # 將本類別image屬性，用get_rect() 框起來(框起來後可以設定一些屬性(中間、上下左右、右上右下左上(xy座標)左下...)，設定image要在框框中的甚麼位置)後，指定給 屬性rect
         # 讓image的左上角 對齊 框框座標(200,200)的位置(注意:框框 座標體系 原點 在 左上角，座標往右下增加):
         # self.rect.x = 200
@@ -76,13 +89,14 @@ class Player(pygame.sprite.Sprite): # 表示創建Player物件類別(玩家操�
         all_sprites.add(bullet)
         bullets.add(bullet) 
 
-
 # 石頭(Sprite類別)
 class Rock(pygame.sprite.Sprite):
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
-        self.image = pygame.Surface((30,40))
-        self.image.fill(RED)
+        self.image = rock_img 
+        self.image.set_colorkey(BLACK)
+        # self.image = pygame.Surface((30,40))
+        # self.image.fill(RED)
         self.rect = self.image.get_rect()
         # 讓image(石頭)於在左右方向隨機出現:
         self.rect.x = random.randrange(0, WIDTH - self.rect.width) # 使用random中的randrage函式，函式中的數字表示數字隨機產生的範圍 # 最左邊:石頭的左邊界靠著X軸座標0的位置；最右邊:石頭的左邊界 靠著畫面寬度-石頭本身寬度 的位置
@@ -111,8 +125,10 @@ class Rock(pygame.sprite.Sprite):
 class Bullet(pygame.sprite.Sprite):
     def __init__(self, x, y): # 子彈位置是根據玩家飛船位置變動的，故以此類別創建物件實體時，需要傳入x,y座標位置(使用此類別創建子彈物件時(在 玩家飛船類別 中創建)，xy參數要帶入玩家飛船位置)
         pygame.sprite.Sprite.__init__(self)
-        self.image = pygame.Surface((10,20))
-        self.image.fill(YELLOW)
+        self.image = bullet_img
+        self.image.set_colorkey(BLACK)
+        # self.image = pygame.Surface((10,20))
+        # self.image.fill(YELLOW)
         self.rect = self.image.get_rect()
         # 讓image(子彈)x軸方向的中間座標 位於 x:
         self.rect.centerx = x
@@ -173,6 +189,7 @@ while running: #條件為真時，執行以下程式碼 #若遊戲進行中:
 
     # 畫面顯示
     screen.fill(BLACK) # screen是前面創建的視窗變數 # full函式裡面要放代表顏色的元組(RGB)，會用該顏色填滿畫面
+    screen.blit(background_img, (0,0)) # blit為畫的意思 #blit(要畫的圖片, 畫的位置:(0,0)表示 圖片左上角 對齊座標0,0位置)
     all_sprites.draw(screen) # 把all_sprites群組裡的東西(各個Sprite物件)都畫到screen(畫面)上
     pygame.display.update() # 更新畫面 (記得，目前一秒鐘會跑60次這個函式=更新60次畫面)
 
