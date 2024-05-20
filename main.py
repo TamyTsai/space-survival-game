@@ -33,7 +33,11 @@ background_img = pygame.image.load(os.path.join("img","background.png")).convert
 # .join("圖片所在資料夾名稱(太空生存戰 資料夾底下的資料夾)","圖片檔案名")
 # .convert()將圖片轉換成pygame較容易讀取的格式，畫到畫面上的速度會比較快
 player_img = pygame.image.load(os.path.join("img","player.png")).convert()
-rock_img = pygame.image.load(os.path.join("img","rock.png")).convert()
+rock_imgs = [] # 用rock_imgs存放列表
+for i in range(7): # 將7張不一樣的石頭圖片 存放至rock_imgs列表中 # 跑此迴圈7次(0 1 2 3 4 5 6(不含7))
+    rock_imgs.append(pygame.image.load(os.path.join("img",f"rock{i}.png")).convert())
+    # 傳入rock0~rock6圖片 # 字串與變數串接的方法:變數外加大括弧，字串前面加f
+# rock_img = pygame.image.load(os.path.join("img","rock.png")).convert()
 bullet_img = pygame.image.load(os.path.join("img","bullet.png")).convert()
 
 
@@ -96,8 +100,9 @@ class Player(pygame.sprite.Sprite): # 表示創建Player物件類別(玩家操�
 class Rock(pygame.sprite.Sprite):
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
-        self.image = rock_img 
-        self.image.set_colorkey(BLACK)
+        self.image_ori = random.choice(rock_imgs) # 轉動前未失真之圖片 # rock_imgs為存有7張石頭圖片的列表 # random.choice(rock_imgs)可從rock_imgs列表中隨機取資料
+        self.image_ori.set_colorkey(BLACK)
+        self.image = self.image_ori.copy() # 複製一份 self.image_ori 指定給self.image
         # self.image = pygame.Surface((30,40))
         # self.image.fill(RED)
         self.rect = self.image.get_rect()
@@ -107,13 +112,29 @@ class Rock(pygame.sprite.Sprite):
         # 讓image(石頭)於在左右方向隨機出現:
         self.rect.x = random.randrange(0, WIDTH - self.rect.width) # 使用random中的randrage函式，函式中的數字表示數字隨機產生的範圍 # 最左邊:石頭的左邊界靠著X軸座標0的位置；最右邊:石頭的左邊界 靠著畫面寬度-石頭本身寬度 的位置
         # 讓image(石頭)於視窗上方外上下隨機出現:
-        self.rect.y = random.randrange(-100, -40) # -100與-40為視窗上方外
+        self.rect.y = random.randrange(-180, -100) # -180與-100為視窗上方外
         # 讓image(石頭)落下速度隨機
         self.speedy = random.randrange(2, 10)
         # 讓image(石頭)左右移動速度隨機
         self.speedx = random.randrange(-3, 3) # 負數表示往左跑(X座標減少)
+        self.total_degree = 0 # 初始旋轉總角度
+        self.rot_degree = random.randrange(-3, 3) # 設定圖片旋轉角度(作為pygame.transform.rotate函式的參數使用)
+
+    def rotate(self):
+        self.total_degree += self.rot_degree # 每次執行rotate函式 就旋轉self.rot_degree度 # 把旋轉總角度的值加上self.rot_degree度後 指定回給 旋轉總角度
+        self.total_degree = self.total_degree % 360 # 防止轉超過一圈 # 旋轉總角度 = 旋轉總角度 除以 360 所剩下的餘數，即表示 旋轉總角度 會介於0~359
+        self.image = pygame.transform.rotate(self.image_ori, self.total_degree)
+        # pygame內建的轉動圖片的函式 pygame.transform.rotate(要旋轉的圖片, 旋轉的角度) # self.total_degree每次更新畫面都隨機旋轉-3~3度，總旋轉角度介於0~359之間
+        # 每次旋轉都會失真一些，一秒鐘更新60次畫面的話，失真就會因疊加而變嚴重，所以要旋轉的圖片不能用self.image，而要用self.image_ori，不過這樣每次都是對原始圖片做轉動，而非旋轉角度疊加，所以圖片會靜止，故要再寫total_degree來裝旋轉總角度
+        # 替轉動後的圖片重新做定位(轉動後沒有重新定位的話，中心點就不會隨轉動後的圖片做調整，圖片會出現旋轉抖動效果)
+        center = self.rect.center # 將變數center指定為 image(石頭)的中心點(原始中心點)
+        self.rect = self.image.get_rect()
+        self.rect.center = center # 把image(石頭)的中心點 定位到 變數center存放的值(self.rect.center原先的中心點)的位置
 
     def update(self):
+        # image(石頭)動畫
+        self.rotate()
+        # image(石頭)落下效果
         self.rect.y += self.speedy # 把原先的y座標值+speedy後的值 指定給 y座標值
         self.rect.x += self.speedx
         # 如果image(石頭)掉到畫面外(下、左、右)，就重新生成
