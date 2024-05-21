@@ -40,6 +40,15 @@ for i in range(7): # 將7張不一樣的石頭圖片 存放至rock_imgs列表中
     # 傳入rock0~rock6圖片 # 字串與變數串接的方法:變數外加大括弧，字串前面加f
 # rock_img = pygame.image.load(os.path.join("img","rock.png")).convert()
 bullet_img = pygame.image.load(os.path.join("img","bullet.png")).convert()
+# 載入爆炸動畫圖片
+expl_anim = {} # 創建 用來 放置 兩種大小爆炸動畫 所需圖片 的 字典(類似js ruby中的物件) # 兩種爆炸圖片一樣，只是大小不同
+expl_anim['lg'] = [] # 創建expl_anim字典中 用來 裝大爆炸(子彈打到石頭)圖片(value) 的key(列表型態) # 字典[想在字典裡取得的value 所對應的key]
+expl_anim['sm'] = [] # 創建expl_anim字典中 用來 裝小爆炸(石頭撞到玩家飛船)圖片(value) 的key(列表型態)
+for i in range(9):
+    expl_img = pygame.image.load(os.path.join("img",f"expl{i}.png")).convert()
+    expl_img.set_colorkey(BLACK) # 把圖片的甚麼顏色(黑色)變成透明
+    expl_anim['lg'].append(pygame.transform.scale(expl_img, (75, 75))) # pygame.transform.scale(要重新定義大小的圖片, (寬,高))
+    expl_anim['sm'].append(pygame.transform.scale(expl_img, (30, 30)))
 
 # 載入音樂
 shoot_sound = pygame.mixer.Sound(os.path.join("sound","shoot.wav")) # 射擊音效
@@ -211,6 +220,33 @@ class Bullet(pygame.sprite.Sprite):
         if self.rect.bottom < 0:
             self.kill() # kill為Sprite類別的內建函式，作用是會將 該Sprite 自所有存有該Sprite的Sprite群組中 刪除
 
+# 爆炸動畫腳本(Sprite類別)
+class Explosion(pygame.sprite.Sprite):
+    def __init__(self, center, size): # 爆炸動畫呈現位置，及是大爆炸還是小爆炸動畫(使用此類別創建物件時，要傳入爆炸動畫要呈現在哪，及欲使用大還是小爆炸動畫)
+        pygame.sprite.Sprite.__init__(self)
+        self.size = size # 物件的size屬性 存放 物件創建時傳入的size參數
+        self.image = expl_anim[self.size][0] # 初始爆炸圖片 # expl_anim為字典(存有兩個列表，key值分別為lg及sm)，[self.size]為列表(裝有一系列圖片的大爆炸或小爆炸列表)，[0]為列表中的資料索引值(列表中的某一張圖片)
+        self.rect = self.image.get_rect() # 對爆炸圖片做定位(以矩形框住，以利後續做定位操縱)
+        self.rect.center = center # 框住 爆炸圖片 的矩形 中心點 設定為 物件創建時傳入的center參數
+        self.frame = 0 # 更新到第0張圖片
+        # 直接用update更新圖片的話，因為FPS設定為60，所以爆炸動畫會變太快，所以要 紀錄圖片最後更新的時間，並設定至少經過多少毫秒，再更新到下一張圖片
+        self.last_update = pygame.time.get_ticks() # 用以 紀錄「最後」更新的時間 # pygame.time.get_ticks() 函式回傳初始化至今經過的毫秒數?
+        self.frame_rate = 50 # 經過至少50毫秒 再更新到下一張圖片(用以 判斷上次最後更新圖片之時間，與目前時間是否已過至少50毫秒)
+
+    def update(self):
+        now = pygame.time.get_ticks() # 「目前」圖片被更新的時間
+        if now - self.last_update > self.frame_rate: # 當 現在時間 與 上次最後更新圖片的時間 相距 超過 self.frame_rate毫秒
+            self.last_update = now # 就把 讓 最後更新圖片的時間 變成 現在時間
+            self.frame += 1 # 並更新下一張圖片
+            if self.frame == len(expl_anim[self.size]): # 如果已經更新到最後一張圖片(最後一張圖片的序號(8) 會 等於存放圖片們列表的長度(9張圖片)??)
+                self.kill() # 就把用此類別建立的物件(爆炸動畫) 刪除
+            else: # 若 還沒更新到最後一張
+                self.image = expl_anim[self.size][self.frame] # 就把圖片更新到下一張
+                # 更新圖片後要重新定位
+                center = self.rect.center # 將變數center指定為 爆炸圖片的中心點(原始中心點) # 先記錄原始中心點 # 初始函式中的參數 只能用在 初始函式中 的 程式碼區塊
+                self.rect = self.image.get_rect()
+                self.rect.center = center # 把 爆炸圖片 的中心點 定位到 變數center存放的值(self.rect.center原先的中心點)的位置
+
 # Sprite群組
 all_sprites = pygame.sprite.Group() # 將 變數all_sprites 指定為 一個sprite群組，群組中可放很多 sprite物件
 rocks = pygame.sprite.Group() # 專放石頭sprite物件的sprite群組
@@ -250,7 +286,9 @@ while running: #條件為真時，執行以下程式碼 #若遊戲進行中:
     for hit in hits: # 對在字典hits中的每個資料(被碰撞到所以消失的物件)，進行以下程式碼(重新建回消失的物件)
         random.choice(expl_sounds).play() # 於存放石頭爆炸聲響的列表中，隨機選取一筆資料 #.play()可播放音效
         # 每個hit是被碰撞到的石頭(hits字典存放的每個資料) # 所以hit.radius是被碰撞到的石頭的半徑
-        score += hit.radius # 根據 子彈 打到的 石頭半徑大小 增加分數
+        score += hit.radius # 根據 子彈 打到的 石頭半徑大小 
+        expl = Explosion(hit.rect.center, 'lg') #創建爆炸動畫Sprite物件 Explosion(center, size) # 爆炸動畫的圖片中心點為 被子彈撞到的石頭圖片的中心點 #子彈石頭相撞為大爆炸
+        all_sprites.add(expl) # 要把expl sprite物件加入all_sprites Sprite群組，才會被畫到畫面上 # 因為後面有寫all_sprites.draw(screen)讓群組裡的物件都被畫到screen上
         # 把與子彈碰撞後消失的石頭創建回來
         new_rock()
         # 子彈本來就可無限發射(按空白鍵就會執行shoot函式，生成子彈物件) 所以不用做如石頭的碰撞消失重生處理
@@ -266,6 +304,8 @@ while running: #條件為真時，執行以下程式碼 #若遊戲進行中:
         new_rock()
         # 按照被多大的石頭撞到，來決定扣血量
         player.health -= hit.radius # 每個hit是被碰撞到的石頭(hits列表存放的每個資料)，所以hit.radius是被碰撞到的石頭的半徑
+        expl = Explosion(hit.rect.center, 'sm') #創建爆炸動畫Sprite物件 Explosion(center, size) # 爆炸動畫的圖片中心點為 撞到 玩家飛船 的 石頭圖片 的 中心點 #玩家飛船與石頭相撞為 小爆炸
+        all_sprites.add(expl)
         # 血量沒了才關閉遊戲
         if player.health <= 0: 
             running = False
