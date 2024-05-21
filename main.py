@@ -15,6 +15,7 @@ YELLOW = (255, 255, 0) # 黃色
 
 # 遊戲初始化 及 創建視窗
 pygame.init() #pygame函式，將遊戲初始化
+pygame.mixer.init() # 初始化音效模組，這樣才能引入音效
 screen = pygame.display.set_mode((WIDTH,HEIGHT)) 
 # pygame函式，創建視窗 
 # 會傳入一元組(以小括弧包住) 
@@ -50,6 +51,17 @@ def draw_text(surf, text, size, x, y): #(要顯示文字的平面(在哪個平�
     text_rect.centerx = x # text_rect的x軸中心位置 定位在 本函式傳進來的x值
     text_rect.top = y  # text_rect的頂部邊界 定位在 本函式傳進來的y值
     surf.blit(text_surface, text_rect) # blit為畫的意思 # 要被畫的平面.blit(要畫的圖片(渲染後的文字物件), 畫的位置:(0,0)表示 圖片左上角 對齊座標0,0位置)
+
+# 載入音樂
+shoot_sound = pygame.mixer.Sound(os.path.join("sound","shoot.wav")) # 射擊音效
+expl_sounds = [
+    pygame.mixer.Sound(os.path.join("sound","expl0.wav")),
+    pygame.mixer.Sound(os.path.join("sound","expl1.wav")) 
+] # 用列表裝兩個石頭爆炸聲
+pygame.mixer.music.load(os.path.join("sound","background.ogg")) # 要持續播放的背景音效，所以寫法不一樣
+# 不用放進變數中，之後用pygame.mixer.music.play(-1)就可以讓其被播放
+pygame.mixer.music.set_volume(0.4) # 設定pygame.mixer.music.load()所載入音樂的聲音大小(0~1)
+    
 
 # Sprite:pygame中的類別，可以創建視窗中的畫面物件
 # 玩家操縱的飛船(Sprite類別)
@@ -105,6 +117,7 @@ class Player(pygame.sprite.Sprite): # 表示創建Player物件類別(玩家操�
         # centerx為 image(玩家飛船)x軸的中間座標，top為image(玩家飛船)的頂部邊界(子彈 初始位置為 玩家飛船 的 頂部中央)
         all_sprites.add(bullet)
         bullets.add(bullet) 
+        shoot_sound.play() # 播放射擊音效
 
 # 石頭(Sprite類別)
 class Rock(pygame.sprite.Sprite):
@@ -195,6 +208,8 @@ for i in range(8): # 執行以下程式碼8次(創建石頭物件 於 all_sprite
     rocks.add(r)
 # 遊戲分數
 score = 0
+# 播放遊戲背景音效
+pygame.mixer.music.play(-1) # pygame.mixer.music.play(要重複播放的次數，-1表示無限播放):播放 用pygame.mixer.music.load()函式 載入的音樂
 
 
 # 遊戲迴圈
@@ -217,6 +232,7 @@ while running: #條件為真時，執行以下程式碼 #若遊戲進行中:
     # 以pygame內建的函式判斷 石頭與子彈(各自位於不同sprite群組)是否碰撞，會回傳一個 「字典」，裡面裝著 被碰撞到的石頭與子彈(key是石頭 value是子彈)，將此字典 指定給 變數hits
     hits = pygame.sprite.groupcollide(rocks, bullets, True, True) # groupcollide(裏頭物件被碰撞的群組1, 裏頭物件被碰撞的群組2, 被碰撞到的群組1內的物件是否要被刪除, 被碰撞到的群組2內的物件是否要被刪除)
     for hit in hits: # 對在字典hits中的每個資料(被碰撞到所以消失的物件)，進行以下程式碼(重新建回消失的物件)
+        random.choice(expl_sounds).play() # 於存放石頭爆炸聲響的列表中，隨機選取一筆資料 #.play()可播放音效
         # 每個hit是被碰撞到的石頭 # 所以hit.radius是被碰撞到的石頭的半徑
         score += hit.radius # 根據 子彈 打到的 石頭半徑大小 增加分數
         r = Rock() # 創建石頭Sprite物件
