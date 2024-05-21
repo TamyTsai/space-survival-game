@@ -41,21 +41,28 @@ for i in range(7): # 將7張不一樣的石頭圖片 存放至rock_imgs列表中
 # rock_img = pygame.image.load(os.path.join("img","rock.png")).convert()
 bullet_img = pygame.image.load(os.path.join("img","bullet.png")).convert()
 # 載入爆炸動畫圖片
-expl_anim = {} # 創建 用來 放置 兩種大小爆炸動畫 所需圖片 的 字典(類似js ruby中的物件) # 兩種爆炸圖片一樣，只是大小不同
+expl_anim = {} # 創建 用來 放置 三種大小爆炸動畫 所需圖片 的 字典(類似js ruby中的物件) # 其中 子彈撞石頭、石頭撞飛船(一般) 兩種爆炸圖片一樣，只是大小不同
 expl_anim['lg'] = [] # 創建expl_anim字典中 用來 裝大爆炸(子彈打到石頭)圖片(value) 的key(列表型態) # 字典[想在字典裡取得的value 所對應的key]
 expl_anim['sm'] = [] # 創建expl_anim字典中 用來 裝小爆炸(石頭撞到玩家飛船)圖片(value) 的key(列表型態)
+expl_anim['player'] = [] # 玩家飛船被石頭撞到生命歸零 的 爆炸
 for i in range(9):
+    # 子彈撞石頭、石頭撞飛船(一般) 
     expl_img = pygame.image.load(os.path.join("img",f"expl{i}.png")).convert()
     expl_img.set_colorkey(BLACK) # 把圖片的甚麼顏色(黑色)變成透明
     expl_anim['lg'].append(pygame.transform.scale(expl_img, (75, 75))) # pygame.transform.scale(要重新定義大小的圖片, (寬,高))
     expl_anim['sm'].append(pygame.transform.scale(expl_img, (30, 30)))
+    # 玩家飛船被石頭撞到生命歸零 的 爆炸
+    player_expl_img = pygame.image.load(os.path.join("img",f"player_expl{i}.png")).convert()
+    player_expl_img.set_colorkey(BLACK)
+    expl_anim['player'].append(player_expl_img)
 
 # 載入音樂
 shoot_sound = pygame.mixer.Sound(os.path.join("sound","shoot.wav")) # 射擊音效
+die_sound = pygame.mixer.Sound(os.path.join("sound","rumble.ogg")) # 玩家飛船被石頭撞到生命歸零 的 爆炸音效
 expl_sounds = [
     pygame.mixer.Sound(os.path.join("sound","expl0.wav")),
     pygame.mixer.Sound(os.path.join("sound","expl1.wav")) 
-] # 用列表裝兩個石頭爆炸聲
+] # 用列表裝兩種石頭爆炸聲(子彈撞石頭)
 pygame.mixer.music.load(os.path.join("sound","background.ogg")) # 要持續播放的背景音效，所以寫法不一樣
 # 不用放進變數中，之後用pygame.mixer.music.play(-1)就可以讓其被播放
 pygame.mixer.music.set_volume(0.4) # 設定pygame.mixer.music.load()所載入音樂的聲音大小(0~1)
@@ -287,7 +294,7 @@ while running: #條件為真時，執行以下程式碼 #若遊戲進行中:
         random.choice(expl_sounds).play() # 於存放石頭爆炸聲響的列表中，隨機選取一筆資料 #.play()可播放音效
         # 每個hit是被碰撞到的石頭(hits字典存放的每個資料) # 所以hit.radius是被碰撞到的石頭的半徑
         score += hit.radius # 根據 子彈 打到的 石頭半徑大小 
-        expl = Explosion(hit.rect.center, 'lg') #創建爆炸動畫Sprite物件 Explosion(center, size) # 爆炸動畫的圖片中心點為 被子彈撞到的石頭圖片的中心點 #子彈石頭相撞為大爆炸
+        expl = Explosion(hit.rect.center, 'lg') #創建 名為expl的 爆炸動畫Sprite物件 Explosion(center, size) # 爆炸動畫的圖片中心點為 被子彈撞到的石頭圖片的中心點 #子彈石頭相撞為大爆炸
         all_sprites.add(expl) # 要把expl sprite物件加入all_sprites Sprite群組，才會被畫到畫面上 # 因為後面有寫all_sprites.draw(screen)讓群組裡的物件都被畫到screen上
         # 把與子彈碰撞後消失的石頭創建回來
         new_rock()
@@ -304,10 +311,13 @@ while running: #條件為真時，執行以下程式碼 #若遊戲進行中:
         new_rock()
         # 按照被多大的石頭撞到，來決定扣血量
         player.health -= hit.radius # 每個hit是被碰撞到的石頭(hits列表存放的每個資料)，所以hit.radius是被碰撞到的石頭的半徑
-        expl = Explosion(hit.rect.center, 'sm') #創建爆炸動畫Sprite物件 Explosion(center, size) # 爆炸動畫的圖片中心點為 撞到 玩家飛船 的 石頭圖片 的 中心點 #玩家飛船與石頭相撞為 小爆炸
+        expl = Explosion(hit.rect.center, 'sm') # 創建 名為expl的 爆炸動畫Sprite物件 Explosion(center, size) # 爆炸動畫的圖片中心點為 撞到 玩家飛船 的 石頭圖片 的 中心點 #玩家飛船與石頭相撞為 小爆炸
         all_sprites.add(expl)
         # 血量沒了才關閉遊戲
         if player.health <= 0: 
+            die = Explosion(player.rect.center, 'player') # 創建 名為die的 爆炸動畫Sprite物件 Explosion(center, size) # 爆炸動畫的圖片中心點為 撞到 玩家飛船sprite物件圖片 的 中心點 #玩家飛船與石頭相撞為 玩家爆炸
+            all_sprites.add(die)
+            die_sound.play()
             running = False
     # if hits: # 如果玩家飛船有撞到石頭(True)
     #     running = False # 就跳出回圈，關閉遊戲
