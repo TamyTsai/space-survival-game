@@ -57,9 +57,15 @@ for i in range(9):
     player_expl_img = pygame.image.load(os.path.join("img",f"player_expl{i}.png")).convert()
     player_expl_img.set_colorkey(BLACK)
     expl_anim['player'].append(player_expl_img)
+# 載入道具圖片
+power_imgs = {} # 創建用來裝道具圖片的字典
+power_imgs['shield'] = pygame.image.load(os.path.join("img","shield.png")).convert() # 創建power_imgs字典中 用來裝 盾牌圖片(value) 的key
+power_imgs['gun'] = pygame.image.load(os.path.join("img","gun.png")).convert()
 
 # 載入音樂
 shoot_sound = pygame.mixer.Sound(os.path.join("sound","shoot.wav")) # 射擊音效
+gun_sound = pygame.mixer.Sound(os.path.join("sound","pow1.wav")) # 吃到gun音效
+shield_sound = pygame.mixer.Sound(os.path.join("sound","pow0.wav")) # 吃到盾牌音效
 die_sound = pygame.mixer.Sound(os.path.join("sound","rumble.ogg")) # 玩家飛船被石頭撞到生命歸零 的 爆炸音效
 expl_sounds = [
     pygame.mixer.Sound(os.path.join("sound","expl0.wav")),
@@ -93,7 +99,7 @@ def draw_health(surf, hp, x, y): # (要顯示HP值的平面, HP值, 顯示出來
     pygame.draw.rect(surf, WHITE, outline_rect, 2) # 畫出矩形(血槽框框):pygame.draw.rect(要畫在哪, 框框顏色, 位置, 外框粗細) # 有第四個參數的話，就會辨別為要畫矩形框框，框框內透明
 
 # 用以 畫出生命數(小飛船) 之 函式
-def draw_lives(surf, lives, img,x, y): # (要顯示生命數的平面, 生命數, 代表生命的圖片,生命們的x座標, 生命們的y座標)
+def draw_lives(surf, lives, img, x, y): # (要顯示生命數的平面, 生命數, 代表生命的圖片, 生命們的x座標, 生命們的y座標)
     for i in range(lives): # 先看現在還剩幾條命
         # 定位 代表 生命數的圖片(img，到時於「畫面顯示」呼叫此函數時，會傳入小飛船)
         img_rect = img.get_rect()
@@ -136,13 +142,22 @@ class Player(pygame.sprite.Sprite): # 表示創建Player物件類別(玩家操�
         self.speedx = 8 # 屬性speedx x軸的移動速度
         self.health = 100 # 玩家飛船的初始HP
         self.lives = 3 # 玩家生命數 物件被創建時初始3條命
-        self.hidden = False # 玩家飛船隱藏狀態 初始為不隱藏
+        self.hidden = False # 玩家飛船隱藏狀態，初始為不隱藏
         self.hide_time = 0 # 玩家飛船隱藏時間
+        self.gun = 1 # 子彈等級 初始為1
+        self.gun_time = 0 # 紀錄吃到gun的時間，初始為0
 
     # 更新畫面
     def update(self):
+        now = pygame.time.get_ticks()
+
+        # 讓gun道具效果在吃到後5秒消失
+        if self.gun > 1 and now - self.gun_time > 5000:
+            self.gun -= 1 # 因為不是設定為self.gun = 1，所以如果一直吃到gun，gun等級就會被一直往上加，每過5秒等級只會-1，-1後還是>=2的話，就還是有兩發子彈的效果
+            self.gun_time = now # now - self.gun_time變0，就不會符合now - self.gun_time > 5000的條件，self.gun不會再減1
+
         # 讓死亡冷卻消失的飛船1秒後重新出現
-        if self.hidden and pygame.time.get_ticks() - self.hide_time > 1000 : # 當 處於死亡隱藏狀態 且 目前時間 距離 開始隱藏的時間 超過1秒 時
+        if self.hidden and now - self.hide_time > 1000 : # 當 處於死亡隱藏狀態 且 目前時間 距離 開始隱藏的時間 超過1秒 時
             self.hidden = False # 取消隱藏
             # 重新定位回原位
             self.rect.centerx = WIDTH/2
@@ -171,19 +186,33 @@ class Player(pygame.sprite.Sprite): # 表示創建Player物件類別(玩家操�
     def shoot(self):
         # 非 處於死亡冷卻隱藏效果時 才能發射子彈
         if not(self.hidden):
-            # 創建bullet子彈sprite物件後，於 all_sprites及bullets Sprite群組 加入 該子彈物件
-            bullet = Bullet(self.rect.centerx, self.rect.top) 
-            # 使用Bullet類別(Sprite類別) 創建一個bullet物件(子彈)(Sprite物件)，初始函式要求傳入子彈初始位置(此處傳入玩家飛船位置)
-            # centerx為 image(玩家飛船)x軸的中間座標，top為image(玩家飛船)的頂部邊界(子彈 初始位置為 玩家飛船 的 頂部中央)
-            all_sprites.add(bullet)
-            bullets.add(bullet) 
-            shoot_sound.play() # 播放射擊音效
+            if self.gun == 1: # 如果gun等級為1(初始等級)
+                # 創建bullet子彈sprite物件後，於 all_sprites及bullets Sprite群組 加入 該子彈物件
+                bullet = Bullet(self.rect.centerx, self.rect.top) 
+                # 使用Bullet類別(Sprite類別) 創建一個bullet物件(子彈)(Sprite物件)，初始函式要求傳入子彈初始位置(此處傳入玩家飛船位置)
+                # centerx為 image(玩家飛船)x軸的中間座標，top為image(玩家飛船)的頂部邊界(子彈 初始位置為 玩家飛船 的 頂部中央)
+                all_sprites.add(bullet)
+                bullets.add(bullet) 
+                shoot_sound.play() # 播放射擊音效
+            elif self.gun >= 2: # 如果gun等級超過2 就可以發射2顆子彈
+                bullet1 = Bullet(self.rect.left, self.rect.centery) # 子彈1由玩家飛船左側邊界(船身中間)發射
+                bullet2 = Bullet(self.rect.right, self.rect.centery) # 子彈2由玩家飛船右側邊界(船身中間)發射
+                all_sprites.add(bullet1)
+                all_sprites.add(bullet2)
+                bullets.add(bullet1) 
+                bullets.add(bullet2) 
+                shoot_sound.play()
 
     # 死亡冷卻隱藏飛船效果
     def hide(self):
         self.hidden = True
         self.hide_time = pygame.time.get_ticks() # 抓目前時間 # 紀錄隱藏的起始時間點
         self.rect.center = (WIDTH/2, HEIGHT+500) # 把玩家飛船定位在視窗外，達隱藏效果 # 將玩家飛船之矩形框框中心點 x軸位置定位在 視窗寬度除以2，y軸位置定義在 視窗高度+500(離視窗底部邊界500px的位置)
+
+    # 玩家飛船吃到gun道具的效果
+    def gunup(self):
+        self.gun += 1 # 子彈等級+1
+        self.gun_time = pygame.time.get_ticks() # 吃到gun的時間，設定為當前時間
 
 
 # 石頭(Sprite類別)
@@ -287,10 +316,28 @@ class Explosion(pygame.sprite.Sprite):
                 self.rect = self.image.get_rect()
                 self.rect.center = center # 把 爆炸圖片 的中心點 定位到 變數center存放的值(self.rect.center原先的中心點)的位置
 
+# 道具
+class Power(pygame.sprite.Sprite):
+    def __init__(self, center): # 使用此類別創建道具物件時，要傳入道具中心點要定位在哪
+        pygame.sprite.Sprite.__init__(self)
+        self.type = random.choice(['shield', 'gun']) # 於存放盾牌及槍的列表中，隨機選取一筆資料
+        self.image = power_imgs[self.type] # power_imgs字典中存有兩個key(shield及gun)，以[key]取得key所對應的value(盾牌和槍的圖片)
+        self.image.set_colorkey(BLACK)
+        self.rect = self.image.get_rect()
+        self.rect.center = center # 道具的中心點定位在 以此類別創建物件時傳入的center參數
+        self.speedy = 3 # 道具向下掉落的速度
+
+    def update(self):
+        self.rect.y += self.speedy # 把原先的y座標值+speedy後的值 指定給 y座標值
+        # 讓image(道具)頂部邊界出視窗下方後，刪除道具
+        if self.rect.top > HEIGHT:
+            self.kill()
+
 # Sprite群組
-all_sprites = pygame.sprite.Group() # 將 變數all_sprites 指定為 一個sprite群組，群組中可放很多 sprite物件
+all_sprites = pygame.sprite.Group() # 將 變數all_sprites 指定為 一個sprite群組，群組中可放很多 sprite物件 # 專放要被呈現在畫面的物件
 rocks = pygame.sprite.Group() # 專放石頭sprite物件的sprite群組
 bullets = pygame.sprite.Group() # 專放子彈sprite物件的sprite群組 (石頭和子彈放在不一樣的sprite群組，才能用pygame內建的函式判斷 石頭與子彈是否碰撞)
+powers = pygame.sprite.Group() # 專放道具sprite物件的sprite群組
 
 # 創建player玩家飛船sprite物件後，於 all_sprites Sprite群組加入 該玩家飛船物件
 player = Player() # 使用Player類別(Sprite類別) 創建一個player物件(玩家飛船)(Sprite物件) # 括弧裡不用寫self
@@ -329,6 +376,11 @@ while running: #條件為真時，執行以下程式碼 #若遊戲進行中:
         score += hit.radius # 根據 子彈 打到的 石頭半徑大小 
         expl = Explosion(hit.rect.center, 'lg') #創建 名為expl的 爆炸動畫Sprite物件 Explosion(center, size) # 爆炸動畫的圖片中心點為 被子彈撞到的石頭圖片的中心點 #子彈石頭相撞為大爆炸
         all_sprites.add(expl) # 要把expl sprite物件加入all_sprites Sprite群組，才會被畫到畫面上 # 因為後面有寫all_sprites.draw(screen)讓群組裡的物件都被畫到screen上
+        # 道具
+        if random.random() > 0.9: # random.random()會回傳隨機0~1的值 #只要隨機回傳的值>0.9 # random.random() > 0.9 表示掉寶率1成(只有10%的機會回傳的數字會>0.9)
+            pow = Power(hit.rect.center) # 就以Power道具類別 創建 道具物件pow # 道具出現的位置，是被子彈打掉的石頭的位置
+            all_sprites.add(pow)
+            powers.add(pow) # 將道具pow Sprite物件 加入 powers Sprite群組(物件才能 被判斷 是否與 玩家飛船 碰撞) 
         # 把與子彈碰撞後消失的石頭創建回來
         new_rock()
         # 子彈本來就可無限發射(按空白鍵就會執行shoot函式，生成子彈物件) 所以不用做如石頭的碰撞消失重生處理
@@ -354,6 +406,19 @@ while running: #條件為真時，執行以下程式碼 #若遊戲進行中:
             player.lives -= 1 # 血量<=0時，玩家飛船生命數扣1
             player.health = 100 # 並且把血量加滿(回復到初始值100)
             player.hide() # 玩家飛船死亡後冷卻一陣子(隱藏一陣子)
+
+    # 判斷 玩家飛船 與 道具 兩類Sprite物件 是否碰撞，此函式回傳 「列表」，存放 所有 碰撞到 玩家飛船 的 道具
+    hits = pygame.sprite.spritecollide(player, powers, True)
+    #spritecollide(裏頭物件被碰撞的群組1, 裏頭物件被碰撞的群組2, 被碰撞到的群組2內的物件是否要被刪除)
+    for hit in hits:
+        if hit.type == 'shield':  # 每個hit是被碰撞到的道具(hits列表存放的每個資料)，所以hit.type是被碰撞到的道具的類型
+            player.health += 20 # 玩家生命值+20
+            if player.health > 100: # 如果玩家生命值滿了
+                player.health = 100 # 就不再增加
+            shield_sound.play()
+        if hit.type == 'gun':
+            player.gunup()
+            gun_sound.play()
 
     # 玩家飛船生命數歸零時，遊戲結束，跳出迴圈
     if player.lives  == 0 and not(death_expl.alive()):
