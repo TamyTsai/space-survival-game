@@ -103,7 +103,8 @@ cd space-survival-game
   - pygame v2.5.2 -->
 
 ## 專案技術
-- Python、pygame
+- 程式語言：Python
+- 框架：pygame
 - 版本控制：Git
 
 ## 聯絡作者
